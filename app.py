@@ -5,6 +5,68 @@ import json
 
 pygame.font.init()
 
+
+class Advancement:
+    def __init__(self, name: str, description: str, *, x: int = 100, y: int = 100, size_x = 32, size_y: int = 32, active_time: int = 1500) -> None:
+        self.name = name
+        self.description = description
+        self.done = False
+        self.active = True
+        self.font = pygame.font.Font(None, 16)
+        self.len_name = len(name)
+        self.len_description = len(description)
+        self.pyRect = pygame.Rect(x, y, size_x, size_y)
+        self.closeButton = pygame.Rect(((x + size_x) - 16), (y + 6), 8, 8)
+        self.x = x
+        self.y = y
+        self.size_x = size_x
+        self.size_y = size_y
+        self.active_time = active_time
+    
+    def setDone(self, done: bool) -> None:
+        self.done = done
+    
+    def setDescription(self, description: str) -> None:
+        self.description = description
+    
+    def setName(self, name: str) -> None:
+        self.name = name
+    
+    def render(self, screen: pygame.surface.Surface) -> None:
+        if self.active:
+            pygame.draw.rect(screen, (33, 33, 33), self.pyRect)
+            nameRender = self.font.render(self.name, True, (255, 255, 255))
+            descriptionRender = self.font.render(self.description, True, (255, 255, 255))
+            closeRender = self.font.render("X", True, (255, 0, 0))
+            screen.blit(nameRender, (self.x + 4, self.y + 4))
+            screen.blit(descriptionRender, (self.x + 4, self.y + 16 + 2))
+            screen.blit(closeRender, self.closeButton)
+    
+    def collision(self, mouse_pos: tuple[int, int], mouse_press: tuple[int, int, int]) -> None:
+        mouse_rect = pygame.Rect(mouse_pos[0] - 4, mouse_pos[1] - 4, 8, 8)
+        if self.closeButton.colliderect(mouse_rect):
+            if mouse_press[0]:
+                self.active = False
+    
+    def timer(self):
+        if self.active_time <= 0:
+            self.active = False
+        self.active_time -= 1
+
+
+class Advancements:
+    def __init__(self, *, advancements: list[Advancement] = []) -> None:
+        self.advancements = advancements
+    
+    def add(self, advancement: Advancement) -> None:
+        self.advancements.append(advancement)
+    
+    def remove(self, advancement: Advancement) -> None:
+        self.advancements.append(advancement)
+    
+    def list(self):
+        return self.advancements
+
 def loadPlayerdata():
     try:
         with open("playerdata.json", "r") as file:
@@ -50,6 +112,7 @@ class App:
         self.total_jumps = 0
         self.total_deaths = 0
         self.max_achievement_timer = 280
+        self.advancements = Advancements()
         pygame.display.set_caption("Rubber Bird")
         pygame.display.set_icon(self.icon_texture)
     
@@ -87,12 +150,6 @@ class App:
         self.gravity = 3.2
         self.obstacles.clear()
         self.obstacleMoveSpeed = 3
-    
-    def draw_achievement(self, name: str):
-        fontRender = self.font.render(name, True, (255, 255, 255), (33, 33, 33))
-        box_size = pygame.Rect(self.resolution[0] - 256, self.resolution[1] - 128, 250, 122)
-        pygame.draw.rect(self.screen, (33, 33, 33), box_size)
-        self.screen.blit(fontRender, (box_size.x + 4, box_size.y + 4))
 
     def run(self) -> None:
         space_bar_press_timer = 0
@@ -103,6 +160,7 @@ class App:
         
         while (self.running):
             self.clock.tick(self.fps)
+            
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     self.running = False
@@ -113,7 +171,14 @@ class App:
                         self.restart_game()
             
             keys = pygame.key.get_pressed()
+            mouse_press = pygame.mouse.get_pressed()
             if keys[pygame.K_SPACE]:
+                if space_bar_press_timer >= self.max_space_bar_press_timer:
+                    space_bar_press_timer = 0
+                    self.total_jumps += 1
+                    gravity_change_timer = self.max_gravity_change_timer
+                    self.player_y += -self.jumpForce
+            if mouse_press[0]:
                 if space_bar_press_timer >= self.max_space_bar_press_timer:
                     space_bar_press_timer = 0
                     self.total_jumps += 1
@@ -188,33 +253,44 @@ class App:
             
             if self.points > 25:
                 if not self.playerdata["Advancements"][0]["done"]:
-                    self.draw_achievement(self.playerdata["Advancements"][0]["name"])
+                    adv = Advancement(self.playerdata["Advancements"][0]["name"], self.playerdata["Advancements"][0]["description"], x=self.resolution[0] - 150, y=self.resolution[1] - 32, size_x=150, active_time=200)
+                    self.advancements.add(adv)
                     self.playerdata["Advancements"][0]["done"] = True
             if self.points > 50:
                 if not self.playerdata["Advancements"][1]["done"]:
-                    self.draw_achievement(self.playerdata["Advancements"][0]["name"])
+                    adv = Advancement(self.playerdata["Advancements"][1]["name"], self.playerdata["Advancements"][0]["description"], x=self.resolution[0] - 150, y=self.resolution[1] - 32, size_x=150, active_time=200)
+                    self.advancements.add(adv)
                     self.playerdata["Advancements"][1]["done"] = True
             if self.points > 100:
                 if not self.playerdata["Advancements"][2]["done"]:
-                    self.draw_achievement(self.playerdata["Advancements"][0]["name"])
+                    adv = Advancement(self.playerdata["Advancements"][2]["name"], self.playerdata["Advancements"][0]["description"], x=self.resolution[0] - 150, y=self.resolution[1] - 32, size_x=150, active_time=200)
+                    self.advancements.add(adv)
                     self.playerdata["Advancements"][2]["done"] = True
             if self.points > 200:
                 if not self.playerdata["Advancements"][3]["done"]:
-                    self.draw_achievement(self.playerdata["Advancements"][0]["name"])
+                    adv = Advancement(self.playerdata["Advancements"][3]["name"], self.playerdata["Advancements"][0]["description"], x=self.resolution[0] - 150, y=self.resolution[1] - 32, size_x=150, active_time=200)
+                    self.advancements.add(adv)
                     self.playerdata["Advancements"][3]["done"] = True
             if self.points > 500:
                 if not self.playerdata["Advancements"][4]["done"]:
-                    self.draw_achievement(self.playerdata["Advancements"][0]["name"])
+                    adv = Advancement(self.playerdata["Advancements"][4]["name"], self.playerdata["Advancements"][0]["description"], x=self.resolution[0] - 150, y=self.resolution[1] - 32, size_x=150, active_time=200)
+                    self.advancements.add(adv)
                     self.playerdata["Advancements"][4]["done"] = True
             if self.total_jumps > 10_000:
                 if not self.playerdata["Advancements"][5]["done"]:
-                    self.draw_achievement(self.playerdata["Advancements"][0]["name"])
+                    adv = Advancement(self.playerdata["Advancements"][5]["name"], self.playerdata["Advancements"][0]["description"], x=self.resolution[0] - 150, y=self.resolution[1] - 32, size_x=150, active_time=200)
+                    self.advancements.add(adv)
                     self.playerdata["Advancements"][5]["done"] = True
             
             self.screen.blit(self.player_texture, (self.player_x, self.player_y))
 
             fontRender = self.font.render("{}".format(self.points), True, (0, 0, 0))
             self.screen.blit(fontRender, (self.resolution[0] // 2, 64))
+
+            for advancement in self.advancements.list():
+                advancement.render(self.screen)
+                advancement.collision(pygame.mouse.get_pos(), pygame.mouse.get_pressed())
+                advancement.timer()
             
             pygame.display.flip()
             self.screen.fill((0, 255, 255))
